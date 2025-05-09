@@ -1,22 +1,32 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { Menu, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { ModeToggle } from "@/components/mode-toggle"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { Menu, X, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ModeToggle } from "@/components/mode-toggle";
+import { auth } from "@/firebase/firebaseConfig";
+import { onAuthStateChanged, signOut, User } from "firebase/auth";
 
 export function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false)
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10)
-    }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+    });
+    return () => unsubscribe();
+  }, []);
 
   return (
     <header
@@ -34,39 +44,87 @@ export function Navbar() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8">
-          <Link href="/events" className="text-sm font-medium hover:text-primary transition-colors">
+          <Link
+            href="/events"
+            className="text-sm font-medium hover:text-primary transition-colors"
+          >
             Discover Events
           </Link>
-          <Link href="/create" className="text-sm font-medium hover:text-primary transition-colors">
+          <Link
+            href="/create"
+            className="text-sm font-medium hover:text-primary transition-colors"
+          >
             Create Event
           </Link>
-          <Link href="/about" className="text-sm font-medium hover:text-primary transition-colors">
+          <Link
+            href="/about"
+            className="text-sm font-medium hover:text-primary transition-colors"
+          >
             About
           </Link>
-          <Link href="/contact" className="text-sm font-medium hover:text-primary transition-colors">
+          <Link
+            href="/contact"
+            className="text-sm font-medium hover:text-primary transition-colors"
+          >
             Contact
           </Link>
         </nav>
 
         <div className="hidden md:flex items-center gap-4">
-          <Link href="/login">
-            <Button variant="ghost" size="sm">
-              Log in
-            </Button>
-          </Link>
-          <Link href="/signup">
-            <Button size="sm" className="gradient-bg button-glow">
-              Sign up
-            </Button>
-          </Link>
-          <ModeToggle />
+          {user ? (
+            <>
+              <Link href="/dashboard">
+                <Button variant="ghost" size="sm">
+                  Dashboard
+                </Button>
+              </Link>
+              <div className="relative group">
+                <Button variant="outline" size="icon" className="rounded-full">
+                  <span className="text-primary font-medium">
+                    {user.email?.[0]?.toUpperCase() || ""}
+                  </span>
+                </Button>
+                <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-black border rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                  <button
+                    className="flex items-center gap-2 w-full px-4 py-2 text-sm hover:bg-muted"
+                    onClick={() => signOut(auth)}
+                  >
+                    <LogOut className="h-4 w-4" /> Log out
+                  </button>
+                </div>
+              </div>
+              <ModeToggle />
+            </>
+          ) : (
+            <>
+              <Link href="/login">
+                <Button variant="ghost" size="sm">
+                  Log in
+                </Button>
+              </Link>
+              <Link href="/signup">
+                <Button size="sm" className="gradient-bg button-glow">
+                  Sign up
+                </Button>
+              </Link>
+              <ModeToggle />
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
         <div className="flex items-center gap-4 md:hidden">
           <ModeToggle />
-          <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-            {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
           </Button>
         </div>
       </div>
@@ -104,18 +162,42 @@ export function Navbar() {
               Contact
             </Link>
             <div className="flex flex-col gap-2 pt-2 border-t">
-              <Link href="/login" onClick={() => setIsMenuOpen(false)}>
-                <Button variant="outline" className="w-full">
-                  Log in
-                </Button>
-              </Link>
-              <Link href="/signup" onClick={() => setIsMenuOpen(false)}>
-                <Button className="w-full gradient-bg button-glow">Sign up</Button>
-              </Link>
+              {user ? (
+                <>
+                  <Link href="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="outline" className="w-full">
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      signOut(auth);
+                    }}
+                  >
+                    <LogOut className="h-4 w-4 mr-2" /> Log out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="outline" className="w-full">
+                      Log in
+                    </Button>
+                  </Link>
+                  <Link href="/signup" onClick={() => setIsMenuOpen(false)}>
+                    <Button className="w-full gradient-bg button-glow">
+                      Sign up
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         </div>
       )}
     </header>
-  )
+  );
 }

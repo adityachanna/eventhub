@@ -1,19 +1,39 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { Eye, EyeOff, ArrowRight, Github, Mail } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Eye, EyeOff, ArrowRight, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
+import { auth } from "@/firebase/firebaseConfig";
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+} from "firebase/auth";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -23,11 +43,11 @@ const formSchema = z.object({
     message: "Password must be at least 8 characters.",
   }),
   rememberMe: z.boolean().default(false),
-})
+});
 
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false)
-  const router = useRouter()
+  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -36,12 +56,35 @@ export default function LoginPage() {
       password: "",
       rememberMe: false,
     },
-  })
+  });
+
+  // Google sign-in logic
+  async function handleGoogleSignIn() {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      router.push("/dashboard");
+    } catch (error: any) {
+      form.setError("email", {
+        type: "manual",
+        message: error.message,
+      });
+    }
+  }
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values)
-    // In a real app, you would authenticate the user here
-    router.push("/dashboard")
+    signInWithEmailAndPassword(auth, values.email, values.password)
+      .then((userCredential) => {
+        const user = userCredential.user;
+        console.log("Logged in user:", user);
+        router.push("/dashboard");
+      })
+      .catch((error) => {
+        form.setError("email", {
+          type: "manual",
+          message: error.message,
+        });
+      });
   }
 
   return (
@@ -51,20 +94,22 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <Card className="glass-effect">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
+              <CardTitle className="text-2xl font-bold text-center">
+                Welcome back
+              </CardTitle>
               <CardDescription className="text-center">
                 Sign in to your account to continue managing your events
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" className="w-full">
-                  <Github className="mr-2 h-4 w-4" />
-                  GitHub
-                </Button>
-                <Button variant="outline" className="w-full">
+              <div className="grid grid-cols-1 gap-4">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleGoogleSignIn}
+                >
                   <Mail className="mr-2 h-4 w-4" />
-                  Google
+                  Sign in with Google
                 </Button>
               </div>
 
@@ -73,12 +118,17 @@ export default function LoginPage() {
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with
+                  </span>
                 </div>
               </div>
 
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-4"
+                >
                   <FormField
                     control={form.control}
                     name="email"
@@ -117,7 +167,11 @@ export default function LoginPage() {
                               ) : (
                                 <Eye className="h-4 w-4 text-muted-foreground" />
                               )}
-                              <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
+                              <span className="sr-only">
+                                {showPassword
+                                  ? "Hide password"
+                                  : "Show password"}
+                              </span>
                             </Button>
                           </div>
                         </FormControl>
@@ -132,7 +186,10 @@ export default function LoginPage() {
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                           <FormControl>
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
                           </FormControl>
                           <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Remember me
@@ -147,7 +204,10 @@ export default function LoginPage() {
                       Forgot password?
                     </Link>
                   </div>
-                  <Button type="submit" className="w-full gradient-bg button-glow">
+                  <Button
+                    type="submit"
+                    className="w-full gradient-bg button-glow"
+                  >
                     Sign In
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -157,7 +217,10 @@ export default function LoginPage() {
             <CardFooter className="flex flex-col space-y-4">
               <div className="text-center text-sm">
                 Don&apos;t have an account?{" "}
-                <Link href="/signup" className="font-medium text-primary hover:underline underline-offset-4">
+                <Link
+                  href="/signup"
+                  className="font-medium text-primary hover:underline underline-offset-4"
+                >
                   Sign up
                 </Link>
               </div>
@@ -167,5 +230,5 @@ export default function LoginPage() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }

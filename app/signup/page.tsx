@@ -1,22 +1,49 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { Eye, EyeOff, ArrowRight, Github, Mail, Check } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Separator } from "@/components/ui/separator"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Eye, EyeOff, ArrowRight, Mail, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Separator } from "@/components/ui/separator";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { auth } from "@/firebase/firebaseConfig";
+import {
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+} from "firebase/auth";
 
 const accountFormSchema = z.object({
   email: z.string().email({
@@ -35,7 +62,7 @@ const accountFormSchema = z.object({
   termsAccepted: z.literal(true, {
     errorMap: () => ({ message: "You must accept the terms and conditions." }),
   }),
-})
+});
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {
@@ -49,7 +76,7 @@ const profileFormSchema = z.object({
   country: z.string({
     required_error: "Please select a country.",
   }),
-})
+});
 
 const preferencesFormSchema = z.object({
   eventTypes: z.array(z.string()).nonempty({
@@ -57,13 +84,13 @@ const preferencesFormSchema = z.object({
   }),
   marketingEmails: z.boolean().default(false),
   newsUpdates: z.boolean().default(false),
-})
+});
 
 export default function SignupPage() {
-  const [step, setStep] = useState(1)
-  const [showPassword, setShowPassword] = useState(false)
-  const [formData, setFormData] = useState({})
-  const router = useRouter()
+  const [step, setStep] = useState(1);
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({});
+  const router = useRouter();
 
   const accountForm = useForm<z.infer<typeof accountFormSchema>>({
     resolver: zodResolver(accountFormSchema),
@@ -74,7 +101,7 @@ export default function SignupPage() {
       accountType: "personal",
       termsAccepted: false,
     },
-  })
+  });
 
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -85,7 +112,7 @@ export default function SignupPage() {
       phoneNumber: "",
       country: "",
     },
-  })
+  });
 
   const preferencesForm = useForm<z.infer<typeof preferencesFormSchema>>({
     resolver: zodResolver(preferencesFormSchema),
@@ -94,32 +121,59 @@ export default function SignupPage() {
       marketingEmails: false,
       newsUpdates: false,
     },
-  })
+  });
 
   function onSubmitAccountForm(values: z.infer<typeof accountFormSchema>) {
     if (values.password !== values.confirmPassword) {
       accountForm.setError("confirmPassword", {
         type: "manual",
         message: "Passwords do not match.",
-      })
-      return
+      });
+      return;
     }
-    setFormData({ ...formData, ...values })
-    setStep(2)
-    window.scrollTo(0, 0)
+
+    createUserWithEmailAndPassword(auth, values.email, values.password)
+      .then((userCredential) => {
+        const user = userCredential.user;
+        setFormData({ ...formData, ...values });
+        setStep(2);
+        window.scrollTo(0, 0);
+      })
+      .catch((error) => {
+        accountForm.setError("email", {
+          type: "manual",
+          message: error.message,
+        });
+      });
+  }
+
+  // Google sign-in logic
+  async function handleGoogleSignIn() {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      router.push("/dashboard");
+    } catch (error: any) {
+      accountForm.setError("email", {
+        type: "manual",
+        message: error.message,
+      });
+    }
   }
 
   function onSubmitProfileForm(values: z.infer<typeof profileFormSchema>) {
-    setFormData({ ...formData, ...values })
-    setStep(3)
-    window.scrollTo(0, 0)
+    setFormData({ ...formData, ...values });
+    setStep(3);
+    window.scrollTo(0, 0);
   }
 
-  function onSubmitPreferencesForm(values: z.infer<typeof preferencesFormSchema>) {
-    const completeFormData = { ...formData, ...values }
-    console.log(completeFormData)
+  function onSubmitPreferencesForm(
+    values: z.infer<typeof preferencesFormSchema>
+  ) {
+    const completeFormData = { ...formData, ...values };
+    console.log(completeFormData);
     // In a real app, you would register the user here
-    router.push("/dashboard")
+    router.push("/dashboard");
   }
 
   return (
@@ -129,7 +183,9 @@ export default function SignupPage() {
         <div className="w-full max-w-md">
           <Card className="glass-effect">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-center">Create an account</CardTitle>
+              <CardTitle className="text-2xl font-bold text-center">
+                Create an account
+              </CardTitle>
               <CardDescription className="text-center">
                 Sign up to start creating and managing your events
               </CardDescription>
@@ -141,26 +197,34 @@ export default function SignupPage() {
                   <div key={i} className="flex items-center">
                     <div
                       className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                        step >= i ? "gradient-bg text-white" : "bg-muted text-muted-foreground"
+                        step >= i
+                          ? "gradient-bg text-white"
+                          : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {step > i ? <Check className="h-5 w-5" /> : i}
                     </div>
-                    {i < 3 && <div className={`h-1 w-16 ${step > i ? "gradient-bg" : "bg-muted"}`}></div>}
+                    {i < 3 && (
+                      <div
+                        className={`h-1 w-16 ${
+                          step > i ? "gradient-bg" : "bg-muted"
+                        }`}
+                      ></div>
+                    )}
                   </div>
                 ))}
               </div>
 
               {step === 1 && (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Button variant="outline" className="w-full">
-                      <Github className="mr-2 h-4 w-4" />
-                      GitHub
-                    </Button>
-                    <Button variant="outline" className="w-full">
+                  <div className="grid grid-cols-1 gap-4">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleGoogleSignIn}
+                    >
                       <Mail className="mr-2 h-4 w-4" />
-                      Google
+                      Sign up with Google
                     </Button>
                   </div>
 
@@ -169,12 +233,17 @@ export default function SignupPage() {
                       <span className="w-full border-t" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                      <span className="bg-background px-2 text-muted-foreground">
+                        Or continue with
+                      </span>
                     </div>
                   </div>
 
                   <Form {...accountForm}>
-                    <form onSubmit={accountForm.handleSubmit(onSubmitAccountForm)} className="space-y-4">
+                    <form
+                      onSubmit={accountForm.handleSubmit(onSubmitAccountForm)}
+                      className="space-y-4"
+                    >
                       <FormField
                         control={accountForm.control}
                         name="email"
@@ -182,7 +251,10 @@ export default function SignupPage() {
                           <FormItem>
                             <FormLabel>Email</FormLabel>
                             <FormControl>
-                              <Input placeholder="name@example.com" {...field} />
+                              <Input
+                                placeholder="name@example.com"
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -213,12 +285,17 @@ export default function SignupPage() {
                                   ) : (
                                     <Eye className="h-4 w-4 text-muted-foreground" />
                                   )}
-                                  <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
+                                  <span className="sr-only">
+                                    {showPassword
+                                      ? "Hide password"
+                                      : "Show password"}
+                                  </span>
                                 </Button>
                               </div>
                             </FormControl>
                             <FormDescription>
-                              Must be at least 8 characters with uppercase, lowercase, and numbers.
+                              Must be at least 8 characters with uppercase,
+                              lowercase, and numbers.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -257,13 +334,17 @@ export default function SignupPage() {
                                   <FormControl>
                                     <RadioGroupItem value="personal" />
                                   </FormControl>
-                                  <FormLabel className="font-normal">Personal Account</FormLabel>
+                                  <FormLabel className="font-normal">
+                                    Personal Account
+                                  </FormLabel>
                                 </FormItem>
                                 <FormItem className="flex items-center space-x-3 space-y-0">
                                   <FormControl>
                                     <RadioGroupItem value="organization" />
                                   </FormControl>
-                                  <FormLabel className="font-normal">Organization Account</FormLabel>
+                                  <FormLabel className="font-normal">
+                                    Organization Account
+                                  </FormLabel>
                                 </FormItem>
                               </RadioGroup>
                             </FormControl>
@@ -277,7 +358,10 @@ export default function SignupPage() {
                         render={({ field }) => (
                           <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                             <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
                             </FormControl>
                             <div className="space-y-1 leading-none">
                               <FormLabel>
@@ -302,7 +386,10 @@ export default function SignupPage() {
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" className="w-full gradient-bg button-glow">
+                      <Button
+                        type="submit"
+                        className="w-full gradient-bg button-glow"
+                      >
                         Continue
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
@@ -313,7 +400,10 @@ export default function SignupPage() {
 
               {step === 2 && (
                 <Form {...profileForm}>
-                  <form onSubmit={profileForm.handleSubmit(onSubmitProfileForm)} className="space-y-4">
+                  <form
+                    onSubmit={profileForm.handleSubmit(onSubmitProfileForm)}
+                    className="space-y-4"
+                  >
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={profileForm.control}
@@ -379,7 +469,10 @@ export default function SignupPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Country</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select your country" />
@@ -401,7 +494,11 @@ export default function SignupPage() {
                     />
 
                     <div className="flex justify-between pt-4">
-                      <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setStep(1)}
+                      >
                         Back
                       </Button>
                       <Button type="submit" className="gradient-bg button-glow">
@@ -415,47 +512,69 @@ export default function SignupPage() {
 
               {step === 3 && (
                 <Form {...preferencesForm}>
-                  <form onSubmit={preferencesForm.handleSubmit(onSubmitPreferencesForm)} className="space-y-4">
+                  <form
+                    onSubmit={preferencesForm.handleSubmit(
+                      onSubmitPreferencesForm
+                    )}
+                    className="space-y-4"
+                  >
                     <FormField
                       control={preferencesForm.control}
                       name="eventTypes"
                       render={() => (
                         <FormItem>
                           <div className="mb-4">
-                            <FormLabel className="text-base">What types of events are you interested in?</FormLabel>
-                            <FormDescription>Select all that apply.</FormDescription>
+                            <FormLabel className="text-base">
+                              What types of events are you interested in?
+                            </FormLabel>
+                            <FormDescription>
+                              Select all that apply.
+                            </FormDescription>
                           </div>
-                          {["conferences", "workshops", "webinars", "networking", "social", "fundraising"].map(
-                            (item) => (
-                              <FormField
-                                key={item}
-                                control={preferencesForm.control}
-                                name="eventTypes"
-                                render={({ field }) => {
-                                  return (
-                                    <FormItem
-                                      key={item}
-                                      className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
-                                    >
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={field.value?.includes(item)}
-                                          onCheckedChange={(checked) => {
-                                            return checked
-                                              ? field.onChange([...field.value, item])
-                                              : field.onChange(field.value?.filter((value) => value !== item))
-                                          }}
-                                        />
-                                      </FormControl>
-                                      <FormLabel className="font-normal">
-                                        {item.charAt(0).toUpperCase() + item.slice(1)}
-                                      </FormLabel>
-                                    </FormItem>
-                                  )
-                                }}
-                              />
-                            ),
-                          )}
+                          {[
+                            "conferences",
+                            "workshops",
+                            "webinars",
+                            "networking",
+                            "social",
+                            "fundraising",
+                          ].map((item) => (
+                            <FormField
+                              key={item}
+                              control={preferencesForm.control}
+                              name="eventTypes"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    key={item}
+                                    className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
+                                  >
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(item)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([
+                                                ...field.value,
+                                                item,
+                                              ])
+                                            : field.onChange(
+                                                field.value?.filter(
+                                                  (value) => value !== item
+                                                )
+                                              );
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="font-normal">
+                                      {item.charAt(0).toUpperCase() +
+                                        item.slice(1)}
+                                    </FormLabel>
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                          ))}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -464,18 +583,27 @@ export default function SignupPage() {
                     <Separator className="my-4" />
 
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Communication Preferences</h3>
+                      <h3 className="text-lg font-medium">
+                        Communication Preferences
+                      </h3>
                       <FormField
                         control={preferencesForm.control}
                         name="marketingEmails"
                         render={({ field }) => (
                           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                             <div className="space-y-0.5">
-                              <FormLabel className="text-base">Marketing emails</FormLabel>
-                              <FormDescription>Receive emails about new features and offers.</FormDescription>
+                              <FormLabel className="text-base">
+                                Marketing emails
+                              </FormLabel>
+                              <FormDescription>
+                                Receive emails about new features and offers.
+                              </FormDescription>
                             </div>
                             <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
                             </FormControl>
                           </FormItem>
                         )}
@@ -486,11 +614,18 @@ export default function SignupPage() {
                         render={({ field }) => (
                           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                             <div className="space-y-0.5">
-                              <FormLabel className="text-base">News and updates</FormLabel>
-                              <FormDescription>Receive the latest news and updates.</FormDescription>
+                              <FormLabel className="text-base">
+                                News and updates
+                              </FormLabel>
+                              <FormDescription>
+                                Receive the latest news and updates.
+                              </FormDescription>
                             </div>
                             <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
                             </FormControl>
                           </FormItem>
                         )}
@@ -498,7 +633,11 @@ export default function SignupPage() {
                     </div>
 
                     <div className="flex justify-between pt-4">
-                      <Button type="button" variant="outline" onClick={() => setStep(2)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setStep(2)}
+                      >
                         Back
                       </Button>
                       <Button type="submit" className="gradient-bg button-glow">
@@ -513,7 +652,10 @@ export default function SignupPage() {
             <CardFooter className="flex flex-col space-y-4">
               <div className="text-center text-sm">
                 Already have an account?{" "}
-                <Link href="/login" className="font-medium text-primary hover:underline underline-offset-4">
+                <Link
+                  href="/login"
+                  className="font-medium text-primary hover:underline underline-offset-4"
+                >
                   Sign in
                 </Link>
               </div>
@@ -523,5 +665,5 @@ export default function SignupPage() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }
